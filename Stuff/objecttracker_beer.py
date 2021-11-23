@@ -8,6 +8,7 @@ import time
 import cv2
 import os
 import torch
+from PIL import Image, ImageDraw
 from torchvision import transforms
 path = os.path.dirname(os.path.abspath(__file__))
 import sys
@@ -35,23 +36,25 @@ net.eval()
 print("[INFO] starting video stream...")
 vs = VideoStream(src=0).start()
 time.sleep(2.0)
+color_map = ["","red","green"]
 
 # loop over the frames from the video stream
 while True:
 	# read the next frame from the video stream and resize it
     frame = vs.read()
-    frame = imutils.resize(frame, width=6)
-    frame = convert_tensor(frame)
+    frame = imutils.resize(frame, width=600)
+    img = convert_tensor(frame)
 	# if the frame dimensions are None, grab them
     if W is None or H is None:
-        (H, W) = frame.shape[:2]
+        (H, W) = img.shape[:2]
 	# obtain our output predictions, and initialize the list of
 	# bounding box rectangles
     with torch.no_grad():
-        detections = net([frame.to(device)])
+        detections = net([img.to(device)])
         rects = []
     
     # loop over the detections
+    """
     for i in range(0, detections.shape[2]):
 		# filter out weak detections by ensuring the predicted
 		# probability is greater than a minimum threshold
@@ -65,6 +68,21 @@ while True:
             (startX, startY, endX, endY) = box.astype("int")
             cv2.rectangle(frame, (startX, startY), (endX, endY),
 				(0, 255, 0), 2)
+    """
+
+    predicted_img = Image.fromarray(img.mul(255).permute(1, 2, 0).byte().numpy())
+    # create rectangle image
+    img1 = ImageDraw.Draw(predicted_img)  
+    
+    
+    for pred in detections:
+        boxes = pred["boxes"]
+        labels = pred["labels"]
+        index = 0
+        for box in boxes: 
+            shape = [(box[0], box[1]), (box[2], box[3])]
+            img1.rectangle(shape, outline =color_map[labels[index].item()])
+            index += 1 
             
     # update our centroid tracker using the computed set of bounding
 	# box rectangles
