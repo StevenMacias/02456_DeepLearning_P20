@@ -19,7 +19,7 @@ from centroidtracker import CentroidTracker
 ap = argparse.ArgumentParser()
 ap.add_argument("-m", "--model", required=True,
 	help="path to pre-trained model")
-ap.add_argument("-c", "--confidence", type=float, default=0.5,
+ap.add_argument("-c", "--confidence", type=float, default=0.96,
 	help="minimum probability to filter weak detections")
 args = vars(ap.parse_args())
 
@@ -40,6 +40,7 @@ color_map = ["","red","green"]
 
 # loop over the frames from the video stream
 while True:
+    tstart = time.time()
 	# read the next frame from the video stream and resize it
     frame = vs.read()
     frame = imutils.resize(frame, width=600)
@@ -51,7 +52,7 @@ while True:
 	# bounding box rectangles
     with torch.no_grad():
         detections = net([img.to(device)])
-        rects = []
+    rects = []
     
     # loop over the detections
     """
@@ -70,32 +71,47 @@ while True:
 				(0, 255, 0), 2)
     """
 
-    predicted_img = Image.fromarray(img.mul(255).permute(1, 2, 0).byte().numpy())
+    #predicted_img = Image.fromarray(img.mul(255).permute(1, 2, 0).byte().numpy())
     # create rectangle image
-    img1 = ImageDraw.Draw(predicted_img)  
+    #img1 = ImageDraw.Draw(predicted_img)
     
     
     for pred in detections:
         boxes = pred["boxes"]
+        #print("Detected boxes", boxes) #troubleshooting waypoint
         labels = pred["labels"]
+        conf = pred["scores"]
         index = 0
-        for box in boxes: 
-            shape = [(box[0], box[1]), (box[2], box[3])]
-            img1.rectangle(shape, outline =color_map[labels[index].item()])
+        mask=[idx for idx, val in enumerate(conf) if val>args["confidence"]]
+        labelcols = []
+        for idx, box in enumerate(boxes[mask]): 
+            labelcol = ((0, 0, 255) if labels[idx]==1 else (0, 255, 0))
+            #shape = [(box[0], box[1]), (box[2], box[3])]
+            [startx, starty, endx, endy] = [int(box[0].item()), int(box[1].item()), int(box[2].item()), int(box[3].item())] #* np.array([W, H, W, H])
+            print("Detected box", startx, starty, endx, endy)
+            print("whwh", np.array([W, H, W, H]))
+            #img1.rectangle(shape, outline =color_map[labels[index].item()])
             index += 1 
+            rects.append(np.array([startx, starty, endx, endy]))
+            labelcols.append(labelcol)
+            cv2.rectangle(frame, (startx, starty, endx-startx, endy-starty),
+				labelcol, 3)
             
     # update our centroid tracker using the computed set of bounding
 	# box rectangles
-    objects = ct.update(rects)
+    objects, colors = ct.update(rects, labelcols)
 	# loop over the tracked objects
     for (objectID, centroid) in objects.items():
 		# draw both the ID of the object and the centroid of the
 		# object on the output frame
-        text = "ID {}".format(objectID)
-        cv2.putText(frame, text, (centroid[0] - 10, centroid[1] - 10),
-                    cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
-        cv2.circle(frame, (centroid[0], centroid[1]), 4, (0, 255, 0), -1)
+        text = "{}".format(objectID)
+        cv2.putText(frame, text, (centroid[0], centroid[1]),
+                    cv2.FONT_HERSHEY_DUPLEX, 1.5, colors[objectID], 2)
+        cv2.circle(frame, (centroid[0], centroid[1]), 8, colors[objectID], -1)
 	# show the output frame
+    tend = time.time()
+    FPS = 1/(tend-tstart)
+    cv2.putText(frame, "FPS: {:.1f}".format(FPS), (10, 25), fontFace = cv2.FONT_HERSHEY_DUPLEX, fontScale = 0.75, color = (255,0,0))
     cv2.imshow("Frame", frame)
     key = cv2.waitKey(1) & 0xFF
 	# if the `q` key was pressed, break from the loop
