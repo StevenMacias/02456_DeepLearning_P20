@@ -127,3 +127,10 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+
+coco_eval.py
+coco_utils.py
+engine.py
+transforms.py
+utils.py
+vision/
