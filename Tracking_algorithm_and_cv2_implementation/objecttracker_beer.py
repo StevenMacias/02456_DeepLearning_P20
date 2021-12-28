@@ -1,5 +1,3 @@
-#from centroidtracker import CentroidTracker
-#import centroidtracker
 from imutils.video import VideoStream
 import numpy as np
 import argparse
@@ -17,10 +15,8 @@ from centroidtracker import CentroidTracker
 
 # construct the argument parse and parse the arguments
 ap = argparse.ArgumentParser()
-ap.add_argument("-m", "--model", required=True,
-	help="path to pre-trained model")
-ap.add_argument("-c", "--confidence", type=float, default=0.96,
-	help="minimum probability to filter weak detections")
+ap.add_argument("-m", "--model", required=True,help="path to pre-trained model")
+ap.add_argument("-c", "--confidence", type=float, default=0.96,help="minimum probability to filter weak detections")
 args = vars(ap.parse_args())
 
 ct = CentroidTracker()
@@ -71,16 +67,13 @@ while True:
 				(0, 255, 0), 2)
     """
 
-    #predicted_img = Image.fromarray(img.mul(255).permute(1, 2, 0).byte().numpy())
-    # create rectangle image
-    #img1 = ImageDraw.Draw(predicted_img)
-    
     
     for pred in detections:
         boxes = pred["boxes"]
         #print("Detected boxes", boxes) #troubleshooting waypoint
         labels = pred["labels"]
         conf = pred["scores"]
+        print("Scores: ", conf)
         index = 0
         mask=[idx for idx, val in enumerate(conf) if val>args["confidence"]]
         labelcols = []
