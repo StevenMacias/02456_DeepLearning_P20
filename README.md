@@ -13,6 +13,7 @@ conda activate deep_learning
 conda install -c conda-forge jupyterlab
 conda install pytorch torchvision torchaudio cudatoolkit=10.2 -c pytorch
 conda install -c conda-forge opencv
+conda install -c conda-forge imutils 
 ```
 ## Home directory structure
 
